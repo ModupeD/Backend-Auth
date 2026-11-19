@@ -21,11 +21,14 @@ app.get('/api/health', (_req, res) => {
 })
 
 app.post('/api/auth/register', (req, res) => {
-    const { email, password } = req.body ?? {};
+    const { name, email, password } = req.body ?? {};
 
-    if (!isNonBlankString(email) || !isNonBlankString(password)) {
+    if (
+        !isNonBlankString(name) ||
+        !isNonBlankString(email) || 
+        !isNonBlankString(password)) {
         res.status(400).json({ message: 'Email and password are required'});
         return;
     }
-    return res.status(200).json({ status: 'success', service: 'user-registration-api' });
+    return res.status(201).json({ status: 'success', service: 'user-registration-api' });
 })
