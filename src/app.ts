@@ -3,8 +3,7 @@ import express from 'express';
 import helmet from 'helmet';
 import { env } from './config/env.js';
 import bcrypt from 'bcrypt';
-import { getPool } from './db/pool.js'
-import type { RowDataPacket } from 'mysql2';
+import { prisma } from './db/prisma.js';
 
 export const app = express();
 
@@ -24,27 +23,25 @@ app.get('/api/health', (_req, res) => {
 })
 
 app.post('/api/auth/register',async (req, res) => {
-    const { name, email, password } = req.body ?? {};
+    const { name, email, password, role:role } = req.body ?? {};
 
     if (
         !isNonBlankString(name) ||
         !isNonBlankString(email) || 
-        !isNonBlankString(password)) {
-        res.status(400).json({ message: 'Email and password are required'});
+        !isNonBlankString(password)||
+        !role) {
+        res.status(400).json({ message: 'Email, password and role are required'});
         return;
     }
    
         
         try {
-             const hashedPassword = await bcrypt.hash(password, 10);
-            await getPool(). execute(
-                'INSERT INTO users (name, email, password) VALUES (?, ?, ?)',
-                [
-                    name.trim(),
-                    email.trim().toLowerCase(),
-                    hashedPassword
-                ]
-             );
+            const hashedPassword = await bcrypt.hash(password, 10);
+            await prisma.users.create({ data:{
+                  name: name.trim(),
+                  email: email.trim().toLowerCase(),
+                  password: hashedPassword,
+                  role: role }});
 
             res.status(201).json({
                 message: 'User registered successfully'
@@ -71,23 +68,20 @@ app.post('/api/auth/register',async (req, res) => {
 });
 
 app.post('/api/auth/login',async (req, res) => {
-    const { email, password } = req.body ?? {};
+    const {  email, password, role } = req.body ?? {};
 
     if (
         !isNonBlankString(email) || 
-        !isNonBlankString(password)) {
-        res.status(400).json({ message: 'Email and password are required'});
+        !isNonBlankString(password)||
+        !role) {
+        res.status(400).json({ message: 'Email, password and role are required'});
         return;
     }
    
         
         try {
-           const [rows] = await getPool().execute<RowDataPacket[]>(
-            'SELECT password FROM users WHERE email = ?',
-            [email.trim().toLowerCase()],
-           );
+           const user = await prisma.users.findUnique({ where:{email: email.trim().toLowerCase()}});
 
-           const user = rows[0];
            const passwordMatches = user
            ? await bcrypt.compare(password, user.password)
            : false;
