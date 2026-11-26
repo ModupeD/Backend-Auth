@@ -100,3 +100,32 @@ app.post('/api/auth/login',async (req, res) => {
         }
       
 });
+
+
+app.get('/api/users', async (_req, res) =>{
+    const users = await prisma.users.findMany({omit: {password: true}})
+    res.status(200).json({ users});
+})
+
+
+app.get('/api/users/:email', async (req, res) =>{
+    const { email } = req.params;
+    const user = await prisma.users.findUnique({where:{email: email}, omit: {password: true}})
+    res.status(200).json({ user });
+})
+
+app.delete('/api/users/:email', async (req, res) =>{
+    const { email } = req.params;
+    const user = await prisma.users.delete({where:{email: email}, omit: {password: true}})
+    res.status(200).json({ user, message:"user deleted" });
+})
+
+app.patch('/api/users/:email', async (req, res) =>{
+    const { email } = req.params;
+    const { password, role } = req.body;
+    const hashedPassword = password ? await bcrypt.hash(password, 10) : undefined;
+// need to add hashed password
+    const user = await prisma.users.update({where:{email: email.trim().toLowerCase()}, data:{password:password, role:role}})
+    
+    res.status(200).json({ message:"user updated" });
+})
